@@ -20,7 +20,7 @@ import { InvitedPlayer } from './invited.player.entity';
 import { InvitedAnonPlayer } from './invited.anon.player.entity';
 
 @Entity()
-@Index(['name', 'date'], { unique: true })
+@Index(['name', 'date', 'hour'], { unique: true })
 export class Court {
   @PrimaryGeneratedColumn()
   id: number;

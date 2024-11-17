@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { EntityManager, In, LessThan, Not } from 'typeorm';
+import { EntityManager, In, LessThan, Not, MoreThanOrEqual } from 'typeorm';
 import { Club } from '../club/club.entity';
 import { mapDtoToEntity } from '../decorators/automap';
 import { HandleDabaseConstraints } from '../decorators/contraint-handlers';
@@ -407,7 +407,7 @@ export class CourtService {
         lastWeekDate.setDate(lastWeekDate.getDate() - 7);
         let lastWeekCourts = await manager.find(Court, {
           where: {
-            date: lastWeekDate,
+            date: MoreThanOrEqual(lastWeekDate),
             hour: createCourtDto.hour,
             club: { id: createCourtDto.club },
           },
@@ -597,7 +597,7 @@ export class CourtService {
     let existingPlayer = await this.playerService.findOneAsResponseDto(manager, playerId);
     if (existingPlayer.futureBalance < 0 ) {
       throw new HttpException(
-        `Saldo futuro ${existingPlayer.futureBalance} insuficiente. Previsto: ${round(existingPlayer.balance - existingPlayer.futureBalance)}. Pistas añadidas: ${existingCourt.price}.`,
+        `${existingPlayer.name} - ${existingPlayer.surname} Saldo futuro ${existingPlayer.futureBalance} insuficiente. Previsto: ${round(existingPlayer.balance - existingPlayer.futureBalance)}. Pistas añadidas: ${existingCourt.price}.`,
         HttpStatus.BAD_REQUEST,
       );
     }

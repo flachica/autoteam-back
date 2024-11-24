@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { EntityManager, In, LessThan, Not, MoreThanOrEqual } from 'typeorm';
+import { EntityManager, In, LessThan, Not, MoreThanOrEqual, Equal } from 'typeorm';
 import { Club } from '../club/club.entity';
 import { mapDtoToEntity } from '../decorators/automap';
 import { HandleDabaseConstraints } from '../decorators/contraint-handlers';
@@ -391,54 +391,71 @@ export class CourtService {
 
     // for monday to friday
     for (let i = 0; i < 5; i++) {
-      let createCourtDto = new CreateCourtDto();
-      createCourtDto.hour = openWeekDto.hour;
-      let date = new Date(mondayDate);
-      date.setDate(date.getDate() + i);
-      createCourtDto.date = new Date(date).toLocaleDateString('es-ES');
-      createCourtDto.club = openWeekDto.clubId;
-      
+      const newDate = new Date(date);
+      newDate.setDate(newDate.getDate() + i);
+
+      const newCourtDate = new Date(newDate).toLocaleDateString('es-ES');
       let existingCourt = await manager.findOne(Court, {
-        where: { date: parseDate(createCourtDto.date) },
+        where: { date: parseDate(newCourtDate) },
       });
       if (!existingCourt) {
-        // Inclusión de los admin y vips
-        let lastWeekDate = parseDate(createCourtDto.date);
+        let lastWeekDate = parseDate(newCourtDate);
         lastWeekDate.setDate(lastWeekDate.getDate() - 7);
         let lastWeekCourts = await manager.find(Court, {
           where: {
-            date: MoreThanOrEqual(lastWeekDate),
-            hour: createCourtDto.hour,
-            club: { id: createCourtDto.club },
+            date: Equal(lastWeekDate),
+            club: { id: openWeekDto.clubId },
           },
           relations: ['players'],
         });
-        let lastWeekPlayers = lastWeekCourts
-          .map((court) => court.players)
-          .flat();
-        let vipPlayers = await manager.find(Player, {
-          where: [{ role: 'vip' }, { role: 'admin' }],
-        });
-        vipPlayers = vipPlayers.filter((player) => {
-          return lastWeekPlayers.some((lastWeekPlayer) => {
-            return player.id == lastWeekPlayer.id;
+        for (let lastWeekCourt of lastWeekCourts) {
+          let createCourtDto = new CreateCourtDto();
+          createCourtDto.hour = openWeekDto.hour;
+          let date = new Date(mondayDate);
+          date.setDate(date.getDate() + i);
+          createCourtDto.date = newCourtDate;
+          createCourtDto.club = openWeekDto.clubId;
+          
+          let lastWeekPlayers = lastWeekCourt
+            .players.map((player) => player.id)
+            .flat();
+          let vipPlayers = await manager.find(Player, {
+            where: [{ role: 'vip' }, { role: 'admin' }],
           });
+          vipPlayers = vipPlayers.filter((player) => {
+            return lastWeekPlayers.some((lastWeekPlayer) => {
+              return player.id == lastWeekPlayer;
+            });
+          });
+
+          let remainingPlayers = createCourtDto.maxPlayers;
+          if (createCourtDto.players) {
+            remainingPlayers -= createCourtDto.players.length;
+          } else {
+            createCourtDto.players = [];
+          }
+          if (vipPlayers.length > remainingPlayers) {
+            vipPlayers = vipPlayers.slice(0, remainingPlayers);
+          }
+          createCourtDto.players = createCourtDto.players.concat(
+            vipPlayers.map((player) => player.id),
+          );
+          createCourtDto.hour = lastWeekCourt.hour;
+          await this.create(manager, createCourtDto, myPlayerId.toString());
+        }
+        existingCourt = await manager.findOne(Court, {
+          where: { date: parseDate(newCourtDate) },
         });
-
-        let remainingPlayers = createCourtDto.maxPlayers;
-        if (createCourtDto.players) {
-          remainingPlayers -= createCourtDto.players.length;
-        } else {
-          createCourtDto.players = [];
+        // If not vip players
+        if (!existingCourt) {
+          let createCourtDto = new CreateCourtDto();
+          createCourtDto.hour = openWeekDto.hour;
+          let date = new Date(mondayDate);
+          date.setDate(date.getDate() + i);
+          createCourtDto.date = new Date(date).toLocaleDateString('es-ES');
+          createCourtDto.club = openWeekDto.clubId;
+          await this.create(manager, createCourtDto, myPlayerId.toString());
         }
-        if (vipPlayers.length > remainingPlayers) {
-          vipPlayers = vipPlayers.slice(0, remainingPlayers);
-        }
-        createCourtDto.players = createCourtDto.players.concat(
-          vipPlayers.map((player) => player.id),
-        );
-
-        await this.create(manager, createCourtDto, myPlayerId.toString());
       }
     }
     result.message = 'Semana abierta';

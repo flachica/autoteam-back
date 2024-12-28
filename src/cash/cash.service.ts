@@ -15,13 +15,13 @@ import { round } from 'src/utils/numberUtils';
 
 @Injectable()
 export class CashService {
-  constructor(
-    private playerService: PlayerService,    
+  constructor(private playerService: PlayerService) {}
 
-  ) {}
-
-  async create(manager, info: CreateMovementDto): Promise<Movement> {    
-    const payerPlayer = await this.playerService.findOne(manager, info.playerId);
+  async create(manager, info: CreateMovementDto): Promise<Movement> {
+    const payerPlayer = await this.playerService.findOne(
+      manager,
+      info.playerId,
+    );
     if (!payerPlayer) {
       throw new HttpException(
         `No se encontró el jugador ${info.playerId}`,
@@ -39,7 +39,7 @@ export class CashService {
     movement.player = payerPlayer;
     if (info.validated !== undefined) {
       movement.validated = info.validated;
-      if (info.validated) {
+      if (info.validated && !info.unchangeBalance) {
         payerPlayer.balance += info.amount;
         payerPlayer.balance = round(payerPlayer.balance);
         await manager.save(Player, payerPlayer);
@@ -64,12 +64,14 @@ export class CashService {
     return await manager.save(Movement, movement);
   }
 
-
   async findCashMovements(
     manager: EntityManager,
     filter: FilterMovementDto,
-  ): Promise<PaginatedMovements> {    
-    const myPlayer = await this.playerService.findOneAsResponseDto(manager, filter.playerId);
+  ): Promise<PaginatedMovements> {
+    const myPlayer = await this.playerService.findOneAsResponseDto(
+      manager,
+      filter.playerId,
+    );
     if (!myPlayer) {
       throw new HttpException(
         `No se encontró el jugador ${filter.playerId}`,
@@ -100,7 +102,9 @@ export class CashService {
     });
     result.items = movements.map((movement) => ({
       ...movement,
-      date: movement.court ? movement.court.date.toISOString().split(' ')[0] + movement.court.hour : movement.date.toISOString(),
+      date: movement.court
+        ? movement.court.date.toISOString().split(' ')[0] + movement.court.hour
+        : movement.date.toISOString(),
     }));
     return result;
   }
@@ -127,7 +131,7 @@ export class CashService {
     result.pageSize = filter.pageSize || 10;
     let typeOrmFilter: any = {};
     typeOrmFilter.date = this.applyDateFilter(filter);
-    result.totalCount = await manager.count(Movement,{
+    result.totalCount = await manager.count(Movement, {
       where: typeOrmFilter,
     });
     var movements = await manager.find(Movement, {
@@ -139,31 +143,42 @@ export class CashService {
     });
     result.items = movements.map((movement) => ({
       ...movement,
-      date: movement.court ? movement.court.date.toISOString().split('T')[0] + " " + movement.court.hour : movement.date.toISOString(),
+      date: movement.court
+        ? movement.court.date.toISOString().split('T')[0] +
+          ' ' +
+          movement.court.hour
+        : movement.date.toISOString(),
     }));
     return result;
   }
 
   async removeMovementsByCourtId(
     manager: EntityManager,
-    courtId: number
+    courtId: number,
   ): Promise<void> {
     const existingMovements = await manager.find(Movement, {
-      where: { court: { id: courtId } },
+      where: {
+        court: {
+          id: courtId,
+        },
+        validated: false,
+      },
     });
-    const existingCourt = await manager.findOne(Court, {
+    await manager.findOne(Court, {
       where: { id: courtId },
       relations: ['invitedPlayers', 'anonPlayers'],
     });
     for (let i = 0; i < existingMovements.length; i++) {
-      await this.remove(
-        manager, existingMovements[i].id, true
-      );
+      await this.remove(manager, existingMovements[i].id, true);
     }
   }
 
-  async remove(manager: EntityManager, id: number, force: boolean = false): Promise<void> {
-    const existingMovement = await manager.findOne(Movement,{
+  async remove(
+    manager: EntityManager,
+    id: number,
+    force: boolean = false,
+  ): Promise<void> {
+    const existingMovement = await manager.findOne(Movement, {
       where: { id: id },
       relations: ['player'],
     });
@@ -190,7 +205,11 @@ export class CashService {
     await manager.delete(Movement, id);
   }
 
-  async update(manager: EntityManager, id: number, info: UpdateMovementDto): Promise<Movement> {    
+  async update(
+    manager: EntityManager,
+    id: number,
+    info: UpdateMovementDto,
+  ): Promise<Movement> {
     let movement = await manager.findOne(Movement, {
       where: { id: id },
       relations: ['player'],
@@ -211,7 +230,10 @@ export class CashService {
     }
     balanceDiff = round(balanceDiff);
     if (movement.player) {
-      let playerEntity = await this.playerService.findOne(manager, movement.player.id);
+      let playerEntity = await this.playerService.findOne(
+        manager,
+        movement.player.id,
+      );
       if (!playerEntity) {
         throw new HttpException(
           `No se encontró el jugador ${movement.player.id}`,

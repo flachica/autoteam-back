@@ -1,5 +1,12 @@
 import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import { EntityManager, In, LessThan, Not, MoreThanOrEqual, Equal } from 'typeorm';
+import {
+  EntityManager,
+  In,
+  LessThan,
+  Not,
+  MoreThanOrEqual,
+  Equal,
+} from 'typeorm';
 import { Club } from '../club/club.entity';
 import { mapDtoToEntity } from '../decorators/automap';
 import { HandleDabaseConstraints } from '../decorators/contraint-handlers';
@@ -50,7 +57,7 @@ export class CourtService {
     }
     let myPlayerId: number;
     let myPlayerEmail: string;
-    try  {
+    try {
       myPlayerId = parseInt(myPlayerIdOrEmail);
       myPlayer = await manager.findOne(Player, {
         where: { id: myPlayerId },
@@ -176,7 +183,7 @@ export class CourtService {
     if (!court.hour) {
       throw new HttpException('Hora obligatoria', HttpStatus.BAD_REQUEST);
     }
-    
+
     let result = await manager.save(Court, court);
     await this.createCashMovement(manager, court, myPlayer.id);
     return result;
@@ -188,10 +195,22 @@ export class CourtService {
     });
   }
 
+  async findDetailedAll(manager: EntityManager): Promise<Court[]> {
+    return await manager.find(Court, {
+      relations: ['players', 'invitedPlayers', 'anonPlayers'],
+    });
+  }
+
   async findOne(manager: EntityManager, id: number): Promise<Court> {
     const result = await manager.findOne(Court, {
       where: { id },
-      relations: ['club', 'players', 'invitedPlayers', 'anonPlayers', 'reservation'],
+      relations: [
+        'club',
+        'players',
+        'invitedPlayers',
+        'anonPlayers',
+        'reservation',
+      ],
     });
     return result;
   }
@@ -216,7 +235,7 @@ export class CourtService {
       manager.save(Court, { id: id, state: 'expired' });
       return existingCourt;
     }
-    
+
     if (existingCourt.state === 'expired' && !courtDto.state) {
       throw new HttpException(
         `Pista ${id} ya está expirada`,
@@ -317,7 +336,11 @@ export class CourtService {
   }
 
   @HandleDabaseConstraints()
-  async remove(manager: EntityManager, id: number, force: boolean): Promise<void> {
+  async remove(
+    manager: EntityManager,
+    id: number,
+    force: boolean,
+  ): Promise<void> {
     const existingCourt = await this.findOne(manager, id);
     if (!existingCourt) {
       throw new HttpException(
@@ -344,7 +367,7 @@ export class CourtService {
     openWeekDto: OpenWeekDto,
     myPlayerId: number,
   ): Promise<OpenWeekDtoResponse> {
-    manager.transaction
+    manager.transaction;
     const myPlayer = await manager.findOne(Player, {
       where: { id: myPlayerId },
     });
@@ -404,6 +427,7 @@ export class CourtService {
         let lastWeekCourts = await manager.find(Court, {
           where: {
             date: Equal(lastWeekDate),
+            hour: openWeekDto.hour,
             club: { id: openWeekDto.clubId },
           },
           relations: ['players'],
@@ -415,9 +439,9 @@ export class CourtService {
           date.setDate(date.getDate() + i);
           createCourtDto.date = newCourtDate;
           createCourtDto.club = openWeekDto.clubId;
-          
-          let lastWeekPlayers = lastWeekCourt
-            .players.map((player) => player.id)
+
+          let lastWeekPlayers = lastWeekCourt.players
+            .map((player) => player.id)
             .flat();
           let vipPlayers = await manager.find(Player, {
             where: [{ role: 'vip' }, { role: 'admin' }],
@@ -467,13 +491,19 @@ export class CourtService {
     manager: EntityManager,
     courtId: number,
     courtOperation: CourtOperationDto,
-  ): Promise<Court> {    
+  ): Promise<Court> {
     let existingCourt = await manager.findOne(Court, {
-      where: { 
+      where: {
         id: courtId,
         state: Not('expired'),
       },
-      relations: ['club', 'players', 'invitedPlayers', 'anonPlayers', 'reservation'],
+      relations: [
+        'club',
+        'players',
+        'invitedPlayers',
+        'anonPlayers',
+        'reservation',
+      ],
     });
     if (!existingCourt) {
       throw new HttpException(
@@ -485,7 +515,7 @@ export class CourtService {
     today.setHours(0, 0, 0, 0);
     if (existingCourt.date < today) {
       throw new HttpException(
-        `Pista ${existingCourt.date.toLocaleDateString('es-ES') + " " + existingCourt.hour} expirada`,
+        `Pista ${existingCourt.date.toLocaleDateString('es-ES') + ' ' + existingCourt.hour} expirada`,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -495,8 +525,11 @@ export class CourtService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    
-    let player = await this.playerService.findOneAsResponseDto(manager, courtOperation.playerId);
+
+    let player = await this.playerService.findOneAsResponseDto(
+      manager,
+      courtOperation.playerId,
+    );
     if (!player) {
       throw new HttpException(
         `Jugador ${courtOperation.playerId} no encontrado`,
@@ -513,8 +546,11 @@ export class CourtService {
       );
     }
     let invitedPlayersCount = 0;
-    if (courtOperation.invitedPlayers && courtOperation.invitedPlayers.length > 0) {
-      invitedPlayersCount = courtOperation.invitedPlayers.length
+    if (
+      courtOperation.invitedPlayers &&
+      courtOperation.invitedPlayers.length > 0
+    ) {
+      invitedPlayersCount = courtOperation.invitedPlayers.length;
       if (courtOperation.invitedPlayers.length > 0) {
         for (let invitedPlayerId of courtOperation.invitedPlayers) {
           let invitedPlayer = await manager.findOne(Player, {
@@ -532,12 +568,18 @@ export class CourtService {
               HttpStatus.BAD_REQUEST,
             );
           }
-          if (existingCourt.invitedPlayers && existingCourt.invitedPlayers.length > 0) {
+          if (
+            existingCourt.invitedPlayers &&
+            existingCourt.invitedPlayers.length > 0
+          ) {
             for (let existingInvitedId of existingCourt.invitedPlayers) {
-              const existingInvitedEntity = await manager.findOne(InvitedPlayer, {
-                where: { id: existingInvitedId.id },
-                relations: ['invitedPlayer'],
-              });
+              const existingInvitedEntity = await manager.findOne(
+                InvitedPlayer,
+                {
+                  where: { id: existingInvitedId.id },
+                  relations: ['invitedPlayer'],
+                },
+              );
               if (existingInvitedEntity.invitedPlayer.id === invitedPlayer.id) {
                 throw new HttpException(
                   `Jugador ${invitedPlayer.name} ${invitedPlayer.surname} ya está invitado a la pista ${existingCourt.name}`,
@@ -546,32 +588,42 @@ export class CourtService {
               }
             }
           }
-          
+
           let invitedPlayerEntity = new InvitedPlayer();
           invitedPlayerEntity.invitedPlayer = invitedPlayer;
           invitedPlayerEntity.payerPlayer = playerEntity;
           invitedPlayerEntity.court = existingCourt;
           await manager.save(InvitedPlayer, invitedPlayerEntity);
-          await this.createCashMovementFromInvited(manager, existingCourt, player.id, 'Invitando a ' + invitedPlayer.name + ' ' + invitedPlayer.surname);
-        }          
+          await this.createCashMovementFromInvited(
+            manager,
+            existingCourt,
+            player.id,
+            'Invitando a ' + invitedPlayer.name + ' ' + invitedPlayer.surname,
+          );
+        }
       }
     }
     let anonPlayersCount = 0;
     if (courtOperation.anonPlayers && courtOperation.anonPlayers.length > 0) {
       anonPlayersCount = courtOperation.anonPlayers.length;
-      let anonPlayers = courtOperation.anonPlayers
+      let anonPlayers = courtOperation.anonPlayers;
       for (let anonPlayer of anonPlayers) {
         let invitedAnonPlayer = new InvitedAnonPlayer();
         invitedAnonPlayer.nameAnonPlayer = anonPlayer;
         invitedAnonPlayer.payerPlayer = playerEntity;
         invitedAnonPlayer.court = existingCourt;
         await manager.save(invitedAnonPlayer);
-        await this.createCashMovementFromInvited(manager, existingCourt, player.id, 'Invitando a ' + anonPlayer);
+        await this.createCashMovementFromInvited(
+          manager,
+          existingCourt,
+          player.id,
+          'Invitando a ' + anonPlayer,
+        );
       }
     }
     const totalPlayersToPay = invitedPlayersCount + anonPlayersCount + 1;
     const totalCost = totalPlayersToPay * existingCourt.price;
-    if ((player.futureBalance - totalCost) < 0) {
+    if (player.futureBalance - totalCost < 0) {
       throw new HttpException(
         `Saldo futuro ${round(player.futureBalance - totalCost)} insuficiente. Reservas semana: ${round(player.balance - player.futureBalance)}. Pistas añadidas: ${totalCost}.`,
         HttpStatus.BAD_REQUEST,
@@ -579,8 +631,10 @@ export class CourtService {
     }
 
     let totalPlayers = existingCourt.players.length + totalPlayersToPay;
-    if (existingCourt.invitedPlayers) totalPlayers += existingCourt.invitedPlayers.length;
-    if (existingCourt.anonPlayers) totalPlayers += existingCourt.anonPlayers.length;
+    if (existingCourt.invitedPlayers)
+      totalPlayers += existingCourt.invitedPlayers.length;
+    if (existingCourt.anonPlayers)
+      totalPlayers += existingCourt.anonPlayers.length;
     if (totalPlayers > existingCourt.maxPlayers) {
       throw new HttpException(
         `Demasiados jugadores. Maximo: ${existingCourt.maxPlayers}. Jugadores: ${totalPlayers}`,
@@ -590,7 +644,13 @@ export class CourtService {
 
     existingCourt = await manager.findOne(Court, {
       where: { id: courtId },
-      relations: ['club', 'players', 'invitedPlayers', 'anonPlayers', 'reservation'],
+      relations: [
+        'club',
+        'players',
+        'invitedPlayers',
+        'anonPlayers',
+        'reservation',
+      ],
     });
     await existingCourt.players.push(playerEntity);
     if (totalPlayers >= existingCourt.minPlayers) {
@@ -601,7 +661,14 @@ export class CourtService {
     return existingCourt;
   }
 
-  private async createCashMovement(manager: EntityManager, existingCourt: Court, playerId: number, message?: string) {
+  public async createCashMovement(
+    manager: EntityManager,
+    existingCourt: Court,
+    playerId: number,
+    message?: string,
+    unchangeBalance?: boolean,
+    validated?: boolean,
+  ) {
     if (!existingCourt.players.some((p) => p.id == playerId)) {
       return;
     }
@@ -609,10 +676,15 @@ export class CourtService {
     movementDto.amount = -1 * existingCourt.price;
     movementDto.playerId = playerId;
     movementDto.courtId = existingCourt.id;
+    if (unchangeBalance) movementDto.unchangeBalance = unchangeBalance;
     if (message) movementDto.name = message;
+    if (validated) movementDto.validated = validated;
     await this.cashService.create(manager, movementDto);
-    let existingPlayer = await this.playerService.findOneAsResponseDto(manager, playerId);
-    if (existingPlayer.futureBalance < 0 ) {
+    let existingPlayer = await this.playerService.findOneAsResponseDto(
+      manager,
+      playerId,
+    );
+    if (existingPlayer.futureBalance < 0 && !unchangeBalance) {
       throw new HttpException(
         `${existingPlayer.name} - ${existingPlayer.surname} Saldo futuro ${existingPlayer.futureBalance} insuficiente. Previsto: ${round(existingPlayer.balance - existingPlayer.futureBalance)}. Pistas añadidas: ${existingCourt.price}.`,
         HttpStatus.BAD_REQUEST,
@@ -620,15 +692,27 @@ export class CourtService {
     }
   }
 
-  private async createCashMovementFromInvited(manager: EntityManager, existingCourt: Court, playerId: number, message?: string) {
+  public async createCashMovementFromInvited(
+    manager: EntityManager,
+    existingCourt: Court,
+    playerId: number,
+    message?: string,
+    unchangeBalance?: boolean,
+    validated?: boolean,
+  ) {
     let movementDto: CreateMovementDto = new CreateMovementDto();
     movementDto.amount = -1 * existingCourt.price;
     movementDto.playerId = playerId;
     movementDto.courtId = existingCourt.id;
+    if (unchangeBalance) movementDto.unchangeBalance = unchangeBalance;
     if (message) movementDto.name = message;
+    if (validated) movementDto.validated = validated;
     await this.cashService.create(manager, movementDto);
-    let existingPlayer = await this.playerService.findOneAsResponseDto(manager, playerId);
-    if (existingPlayer.futureBalance < 0 ) {
+    let existingPlayer = await this.playerService.findOneAsResponseDto(
+      manager,
+      playerId,
+    );
+    if (existingPlayer.futureBalance < 0) {
       throw new HttpException(
         `Saldo futuro ${existingPlayer.futureBalance} insuficiente. Previsto: ${round(existingPlayer.balance - existingPlayer.futureBalance)}. Pistas añadidas: ${existingCourt.price}.`,
         HttpStatus.BAD_REQUEST,
@@ -641,12 +725,18 @@ export class CourtService {
     manager: EntityManager,
     courtId: number,
     courtOperation: CourtOperationDto,
-  ): Promise<Court> {    
+  ): Promise<Court> {
     let existingCourt = await manager.findOne(Court, {
-      where: { 
+      where: {
         id: courtId,
       },
-      relations: ['club', 'players', 'invitedPlayers', 'anonPlayers', 'reservation'],
+      relations: [
+        'club',
+        'players',
+        'invitedPlayers',
+        'anonPlayers',
+        'reservation',
+      ],
     });
     if (!existingCourt) {
       throw new HttpException(
@@ -661,7 +751,10 @@ export class CourtService {
       );
     }
     let allMyPlayersCount = 1;
-    if (existingCourt.invitedPlayers && existingCourt.invitedPlayers.length > 0) {
+    if (
+      existingCourt.invitedPlayers &&
+      existingCourt.invitedPlayers.length > 0
+    ) {
       for (let invitedPlayer of existingCourt.invitedPlayers) {
         const existingInvitedEntity = await manager.findOne(InvitedPlayer, {
           where: { id: invitedPlayer.id },
@@ -675,11 +768,16 @@ export class CourtService {
     }
     if (existingCourt.anonPlayers && existingCourt.anonPlayers.length > 0) {
       for (let anonPlayer of existingCourt.anonPlayers) {
-        const existingInvitedAnonEntity = await manager.findOne(InvitedAnonPlayer, {
-          where: { id: anonPlayer.id },
-          relations: ['payerPlayer'],
-        });
-        if (existingInvitedAnonEntity.payerPlayer.id === courtOperation.playerId) {
+        const existingInvitedAnonEntity = await manager.findOne(
+          InvitedAnonPlayer,
+          {
+            where: { id: anonPlayer.id },
+            relations: ['payerPlayer'],
+          },
+        );
+        if (
+          existingInvitedAnonEntity.payerPlayer.id === courtOperation.playerId
+        ) {
           await manager.delete(InvitedAnonPlayer, anonPlayer.id);
           allMyPlayersCount += 1;
         }
@@ -707,7 +805,7 @@ export class CourtService {
     let payerPlayerInvitedPlayerId = 0;
     if (!existingCourt.players.some((p) => p.id == courtOperation.playerId)) {
       const invitedPlayers = await manager.find(InvitedPlayer, {
-        where: { 
+        where: {
           court: existingCourt,
           invitedPlayer: { id: courtOperation.playerId },
         },
@@ -720,7 +818,7 @@ export class CourtService {
         );
       else {
         payerPlayerInvitedPlayerId = invitedPlayers[0].payerPlayer.id;
-        await manager.delete(InvitedPlayer, invitedPlayers[0].id);          
+        await manager.delete(InvitedPlayer, invitedPlayers[0].id);
       }
     }
     existingCourt.players = existingCourt.players.filter(
@@ -729,7 +827,10 @@ export class CourtService {
     if (courtOperation.toPlayerId) {
       existingCourt.players.push(toPlayer);
     }
-    if (existingCourt.players.length < existingCourt.minPlayers && existingCourt.state === 'closed') {
+    if (
+      existingCourt.players.length < existingCourt.minPlayers &&
+      existingCourt.state === 'closed'
+    ) {
       existingCourt.state = 'opened';
     }
     const result = await manager.save(existingCourt);
@@ -740,26 +841,28 @@ export class CourtService {
     } else {
       let payerPlayer = await manager.findOne(Player, {
         where: { id: payerPlayerInvitedPlayerId },
-        });
+      });
       await manager.save(Player, payerPlayer);
     }
     const filterCashMovement: FilterMovementDto = new FilterMovementDto();
     filterCashMovement.courtId = existingCourt.id;
     filterCashMovement.playerId = player.id;
-    const movements = await this.cashService.findCashMovements(manager, filterCashMovement);
+    const movements = await this.cashService.findCashMovements(
+      manager,
+      filterCashMovement,
+    );
     if (movements.items.length > 0) {
       for (let movement of movements.items) {
         await manager.delete(Movement, movement.id);
       }
     }
     existingCourt = await manager.findOne(Court, {
-      where: { 
+      where: {
         id: courtId,
       },
       relations: ['players', 'invitedPlayers', 'anonPlayers'],
     });
     return result;
-    
   }
 
   async courtWithoutReservation(manager: EntityManager): Promise<Court[]> {
@@ -768,7 +871,13 @@ export class CourtService {
         reservation: null,
         state: 'closed',
       },
-      relations: ['club', 'players', 'invitedPlayers', 'anonPlayers', 'reservation'],
+      relations: [
+        'club',
+        'players',
+        'invitedPlayers',
+        'anonPlayers',
+        'reservation',
+      ],
     });
   }
 }

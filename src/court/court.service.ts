@@ -1,12 +1,11 @@
-import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
-import {
-  EntityManager,
-  In,
-  LessThan,
-  Not,
-  MoreThanOrEqual,
-  Equal,
-} from 'typeorm';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { CashService } from 'src/cash/cash.service';
+import { CreateMovementDto } from 'src/cash/dtos/create-movement.dto';
+import { FilterMovementDto } from 'src/cash/dtos/filter-movement.dto';
+import { Movement } from 'src/cash/movement.entity';
+import { PlayerService } from 'src/player/player.service';
+import { round } from 'src/utils/numberUtils';
+import { EntityManager, Equal, In, LessThan, Not } from 'typeorm';
 import { Club } from '../club/club.entity';
 import { mapDtoToEntity } from '../decorators/automap';
 import { HandleDabaseConstraints } from '../decorators/contraint-handlers';
@@ -21,14 +20,8 @@ import { CreateCourtDto } from './dtos/create-court.dto';
 import { OpenWeekDtoResponse } from './dtos/open-week-response.dto';
 import { OpenWeekDto } from './dtos/open-week.dto';
 import { UpdateCourtDto } from './dtos/update-court.dto';
-import { InvitedPlayer } from './invited.player.entity';
 import { InvitedAnonPlayer } from './invited.anon.player.entity';
-import { PlayerService } from 'src/player/player.service';
-import { CashService } from 'src/cash/cash.service';
-import { CreateMovementDto } from 'src/cash/dtos/create-movement.dto';
-import { FilterMovementDto } from 'src/cash/dtos/filter-movement.dto';
-import { Movement } from 'src/cash/movement.entity';
-import { round } from 'src/utils/numberUtils';
+import { InvitedPlayer } from './invited.player.entity';
 
 @Injectable()
 export class CourtService {
@@ -465,7 +458,14 @@ export class CourtService {
             vipPlayers.map((player) => player.id),
           );
           createCourtDto.hour = lastWeekCourt.hour;
-          await this.create(manager, createCourtDto, myPlayerId.toString());
+          existingCourt = await this.create(
+            manager,
+            createCourtDto,
+            myPlayerId.toString(),
+          );
+          for (let player of vipPlayers) {
+            await this.createCashMovement(manager, existingCourt, player.id);
+          }
         }
         existingCourt = await manager.findOne(Court, {
           where: { date: parseDate(newCourtDate) },

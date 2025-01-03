@@ -23,4 +23,8 @@ export class CreateMovementDto {
   @IsOptional()
   @ApiProperty()
   unchangeBalance?: boolean;
+
+  @IsOptional()
+  @ApiProperty()
+  monthlyCostId?: number;
 }

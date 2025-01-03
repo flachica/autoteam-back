@@ -1,17 +1,19 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { format } from 'date-fns';
-import { Between, EntityManager } from 'typeorm';
+import { PlayerService } from 'src/player/player.service';
+import { round } from 'src/utils/numberUtils';
+import { Between, EntityManager, IsNull, Not } from 'typeorm';
 import { Court } from '../court/court.entity';
 import { Player } from '../player/player.entity';
 import { parseDate } from '../utils/dateUtils';
+import { CreateMonthlyCostDto } from './dtos/create-monthly-cost.dto';
+import { CreateMovementDto } from './dtos/create-movement.dto';
 import { FilterAllMovementDto } from './dtos/filter-all-movement.dto';
 import { FilterMovementDto } from './dtos/filter-movement.dto';
 import { PaginatedMovements } from './dtos/paginated-cash.dto';
 import { UpdateMovementDto } from './dtos/update-movement.dto';
+import { MonthlyCost } from './monthly.cost.entity';
 import { Movement } from './movement.entity';
-import { CreateMovementDto } from './dtos/create-movement.dto';
-import { PlayerService } from 'src/player/player.service';
-import { round } from 'src/utils/numberUtils';
 
 @Injectable()
 export class CashService {
@@ -60,8 +62,105 @@ export class CashService {
       movement.court = court;
       movement.name = info.name ?? `Pago ${court.name}`;
     }
+    if (info.monthlyCostId) {
+      const monthlyCost = await manager.findOne(MonthlyCost, {
+        where: { id: info.monthlyCostId },
+      });
+      if (!monthlyCost) {
+        throw new HttpException(
+          `No se encontró el coste mensual ${info.monthlyCostId}`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      movement.monthlyCost = monthlyCost;
+      movement.name =
+        info.name ?? `Coste mensual ${monthlyCost.month}/${monthlyCost.year}`;
+    }
     movement.setDefaults();
     return await manager.save(Movement, movement);
+  }
+
+  async createMonthlyCost(
+    manager,
+    info: CreateMonthlyCostDto,
+  ): Promise<Movement> {
+    const monthlyCost = await manager.findOne(MonthlyCost, {
+      where: { year: info.year, month: info.month },
+    });
+    if (monthlyCost) {
+      throw new HttpException(
+        `Los costes mensuales para ${info.month}/${info.year} ya existen`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const lastDayOfMonth = new Date(info.year, info.month, 0);
+    const courts = await manager.find(Court, {
+      where: {
+        date: Between(new Date(info.year, info.month - 1, 1), lastDayOfMonth),
+        reservation: Not(IsNull()),
+      },
+      relations: ['players'],
+    });
+
+    class CourtsByPlayers {
+      playerId: number;
+      count: number;
+    }
+    let allPlayers: CourtsByPlayers[] = [];
+
+    courts.forEach((court) => {
+      court.players.forEach((player) => {
+        let playerIndex = allPlayers.findIndex((p) => p.playerId === player.id);
+        if (playerIndex === -1) {
+          allPlayers.push({ playerId: player.id, count: 1 });
+        } else {
+          allPlayers[playerIndex].count++;
+        }
+      });
+    });
+    const totalPlayers = allPlayers.reduce(
+      (acc, player) => acc + player.count,
+      0,
+    );
+    const maintenanceIncome = round(totalPlayers * 0.2);
+    const maintenanceCost = round(info.amount - maintenanceIncome);
+
+    const monthlyCostEntity = new MonthlyCost();
+    monthlyCostEntity.amount = info.amount;
+    monthlyCostEntity.month = info.month;
+    monthlyCostEntity.year = info.year;
+
+    monthlyCostEntity.description =
+      `Coste general: ${maintenanceIncome}\n` +
+      `Coste restante: ${maintenanceCost}\n` +
+      `Jugadores: ${totalPlayers}\n`;
+
+    let result = await manager.save(MonthlyCost, monthlyCostEntity);
+    if (maintenanceCost < 0) {
+      result = await manager.save(MonthlyCost, {
+        ...monthlyCostEntity,
+        description: monthlyCostEntity.description + 'Movimientos no creados',
+      });
+      return result;
+    }
+    allPlayers.forEach(async (player) => {
+      const maintenanceByPlayer = round(
+        (player.count / totalPlayers) * maintenanceCost,
+      );
+      await this.create(manager, {
+        amount: -1 * maintenanceByPlayer,
+        playerId: player.playerId,
+        name: `Coste mensual ${info.month}/${info.year}. Jugadas ${player.count}/Total jugadores ${totalPlayers}. Coste ${maintenanceByPlayer}`,
+        validated: true,
+        monthlyCostId: result.id,
+      });
+    });
+    return result;
+  }
+
+  async findMonthlyCost(manager: EntityManager): Promise<MonthlyCost[]> {
+    return manager.find(MonthlyCost);
   }
 
   async findCashMovements(
@@ -246,5 +345,28 @@ export class CashService {
     }
     movement.validated = info.validated;
     return await manager.save(Movement, movement);
+  }
+
+  async removeMonthlyCost(
+    manager: EntityManager,
+    monthlyCostId: number,
+  ): Promise<void> {
+    const monthlyCost = await manager.findOne(MonthlyCost, {
+      where: { id: monthlyCostId },
+      relations: ['movements'],
+    });
+    if (!monthlyCost) {
+      throw new HttpException(
+        `No se encontró el coste mensual ${monthlyCostId}`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    if (monthlyCost.movements && monthlyCost.movements.length > 0) {
+      for (const movement of monthlyCost.movements) {
+        await this.update(manager, movement.id, { validated: false });
+        await this.remove(manager, movement.id);
+      }
+    }
+    await manager.delete(MonthlyCost, monthlyCostId);
   }
 }

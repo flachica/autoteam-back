@@ -9,6 +9,7 @@ import {
 import { Court } from '../court/court.entity';
 import { AutoMap } from '../decorators/automap';
 import { Player } from '../player/player.entity';
+import { MonthlyCost } from './monthly.cost.entity';
 
 @Entity()
 @Index(['player', 'date'])
@@ -49,6 +50,11 @@ export class Movement {
   @Column({ nullable: false, default: false })
   @AutoMap()
   validated: boolean;
+
+  @ManyToOne(() => MonthlyCost, (monthlyCost) => monthlyCost.movements)
+  @AutoMap()
+  @JoinTable()
+  monthlyCost: Court;
 
   setDefaults() {
     this.type = this.amount > 0 ? 'in' : 'out';

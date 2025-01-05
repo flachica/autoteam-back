@@ -149,10 +149,10 @@ export class CourtService {
       }
     }
 
-    if (court.players.length >= court.minPlayers) {
+    if (court.players && court.players.length >= court.minPlayers) {
       court.state = 'closed';
     }
-    if (court.players.length > court.maxPlayers) {
+    if (court.players && court.players.length > court.maxPlayers) {
       throw new HttpException(
         `Demasiados jugadores en la pista. Máximo: ${court.maxPlayers}`,
         HttpStatus.BAD_REQUEST,
@@ -669,7 +669,10 @@ export class CourtService {
     unchangeBalance?: boolean,
     validated?: boolean,
   ) {
-    if (!existingCourt.players.some((p) => p.id == playerId)) {
+    if (
+      !existingCourt.players ||
+      !existingCourt.players.some((p) => p.id == playerId)
+    ) {
       return;
     }
     let movementDto: CreateMovementDto = new CreateMovementDto();

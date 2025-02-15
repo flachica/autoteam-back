@@ -7,14 +7,18 @@ import { ClubDto } from './dtos/club.dto';
 import { CourtDto } from './dtos/court.dto';
 import { CourtPlayerDto } from './dtos/courtPlayer.dto';
 import { WeekDto } from './dtos/week.dto';
-import { InvitedPlayer } from 'src/court/invited.player.entity';
+import { InvitedPlayer } from '../court/invited.player.entity';
 import { CourtAnonPlayerDto } from './dtos/courtAnonPlayer.dto';
 
 @Injectable()
 export class WeekService {
   constructor() {}
 
-  async findOne(manager: EntityManager, weekDay: string, myPlayer: Player): Promise<WeekDto> {
+  async findOne(
+    manager: EntityManager,
+    weekDay: string,
+    myPlayer: Player,
+  ): Promise<WeekDto> {
     const clubs = await manager.find(Club, {
       relations: ['players'],
     });
@@ -23,7 +27,14 @@ export class WeekService {
       where: {
         date: Between(mondayWeekDay, sundayWeekDay),
       },
-      relations: ['club', 'players', 'invitedPlayers', 'invitedPlayers.payerPlayer', 'anonPlayers', 'anonPlayers.payerPlayer'],
+      relations: [
+        'club',
+        'players',
+        'invitedPlayers',
+        'invitedPlayers.payerPlayer',
+        'anonPlayers',
+        'anonPlayers.payerPlayer',
+      ],
       order: {
         date: 'ASC',
       },
@@ -72,15 +83,15 @@ export class WeekService {
             },
             relations: ['payerPlayer', 'invitedPlayer'],
           });
-        
-          if (invitedPlayersEntity) {            
+
+          if (invitedPlayersEntity) {
             for (let invitedPlayer of invitedPlayersEntity) {
-              let playerDto: CourtPlayerDto = new CourtPlayerDto();              
+              let playerDto: CourtPlayerDto = new CourtPlayerDto();
               playerDto.id = invitedPlayer.invitedPlayer.id;
               playerDto.name = invitedPlayer.invitedPlayer.name;
               playerDto.surname = invitedPlayer.invitedPlayer.surname;
               playerDto.payerPlayerId = invitedPlayer.payerPlayer.id;
-              
+
               invitedPlayersDto.push(playerDto);
             }
           }

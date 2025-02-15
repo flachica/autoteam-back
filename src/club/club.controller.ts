@@ -21,15 +21,13 @@ import {
 import { Club } from './club.entity';
 import { ClubService } from './club.service';
 import { CreateClubDto } from './dtos/create-club.dto';
-import { getDataSource } from 'src/datasource.wrapper';
+import { getDataSource } from '../datasource.wrapper';
 
 @ApiTags('club')
 @Controller('club')
 @UseGuards(CombinedGuard)
 export class ClubController {
-  constructor(
-    private readonly clubService: ClubService,
-  ) {}
+  constructor(private readonly clubService: ClubService) {}
 
   @Post()
   @ApiCreateResponse(CreateClubDto)
@@ -72,7 +70,10 @@ export class ClubController {
 
   @Put(':id')
   @ApiUpdateResponse(CreateClubDto)
-  async update(@Param('id') id: number, @Body() club: CreateClubDto): Promise<Club> {
+  async update(
+    @Param('id') id: number,
+    @Body() club: CreateClubDto,
+  ): Promise<Club> {
     Logger.log(`ClubController.update(${id}, ${club})`);
     let result;
     await getDataSource(async (dataSource) => {

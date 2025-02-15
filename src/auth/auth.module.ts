@@ -7,7 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { CombinedGuard } from './guards/combined.guard';
 import { JwtStrategy } from './guards/jwt.strategy';
-import { PlayerService } from 'src/player/player.service';
+import { PlayerService } from '../player/player.service';
 import { MagicLoginStrategy } from './guards/magiclogin.strategy';
 import { PassportModule } from '@nestjs/passport';
 
@@ -28,6 +28,12 @@ import { PassportModule } from '@nestjs/passport';
     PassportModule.register({ defaultStrategy: 'magic-login' }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, CombinedGuard, PlayerService, MagicLoginStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    CombinedGuard,
+    PlayerService,
+    MagicLoginStrategy,
+  ],
 })
 export class AuthModule {}

@@ -26,15 +26,13 @@ import { GroupedHourDto } from './dtos/hour.dto';
 import { HourGroup } from './hour-group.entity';
 import { Hour } from './hour.entity';
 import { HourService } from './hour.service';
-import { getDataSource } from 'src/datasource.wrapper';
+import { getDataSource } from '../datasource.wrapper';
 
 @ApiTags('hour')
 @Controller('hour')
 @UseGuards(CombinedGuard)
 export class HourController {
-  constructor(
-    private readonly hourService: HourService,
-  ) {}
+  constructor(private readonly hourService: HourService) {}
 
   @Post()
   @ApiCreateResponse(CreateHourDto)
@@ -42,9 +40,9 @@ export class HourController {
     Logger.log(`HourController.create(${hour})`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          return await this.hourService.create(manager, hour);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        return await this.hourService.create(manager, hour);
+      });
     });
     return result;
   }
@@ -55,9 +53,9 @@ export class HourController {
     Logger.log(`HourController.findAll()`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          return await this.hourService.findAll(manager);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        return await this.hourService.findAll(manager);
+      });
     });
     return result;
   }
@@ -68,9 +66,9 @@ export class HourController {
     Logger.log(`HourController.findOne(${id})`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          return await this.hourService.findOne(manager, id);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        return await this.hourService.findOne(manager, id);
+      });
     });
     return result;
   }
@@ -84,9 +82,9 @@ export class HourController {
     Logger.log(`HourController.remove(${id})`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          return await this.hourService.remove(manager, id);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        return await this.hourService.remove(manager, id);
+      });
     });
     return result;
   }
@@ -96,19 +94,17 @@ export class HourController {
 @Controller('hour-group')
 @UseGuards(CombinedGuard)
 export class HourGroupController {
-  constructor(
-    private readonly hourService: HourService,
-  ) {}
+  constructor(private readonly hourService: HourService) {}
 
   @Get()
   @ApiFindAllResponse(GroupedHourDto)
   async groupedHours(): Promise<GroupedHourDto> {
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          const groupedHour = await this.hourService.groupedHours(manager, false);
-          return groupedHour[0];
-        });
+      result = await dataSource.transaction(async (manager) => {
+        const groupedHour = await this.hourService.groupedHours(manager, false);
+        return groupedHour[0];
+      });
     });
     return result;
   }
@@ -119,9 +115,9 @@ export class HourGroupController {
     Logger.log(`HourGroupController.groupedAllHours()`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          return await this.hourService.groupedHours(manager, true);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        return await this.hourService.groupedHours(manager, true);
+      });
     });
     return result;
   }
@@ -132,9 +128,9 @@ export class HourGroupController {
     Logger.log(`HourGroupController.createGroup(${group})`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          return await this.hourService.createGroup(manager, group);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        return await this.hourService.createGroup(manager, group);
+      });
     });
     return result;
   }
@@ -148,13 +144,13 @@ export class HourGroupController {
     Logger.log(`HourGroupController.activateGroup(${id}, ${active})`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          const activeGroup: ActivateHourGroupDto = {
-            id,
-            active: active,
-          };
-          return await this.hourService.activateGroup(manager, activeGroup);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        const activeGroup: ActivateHourGroupDto = {
+          id,
+          active: active,
+        };
+        return await this.hourService.activateGroup(manager, activeGroup);
+      });
     });
     return result;
   }

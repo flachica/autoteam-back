@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { getDataSource } from 'src/datasource.wrapper';
+import { getDataSource } from '../datasource.wrapper';
 import { CombinedGuard } from '../auth/guards/combined.guard';
 import {
   ApiCreateResponse,

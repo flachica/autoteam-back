@@ -15,7 +15,7 @@ import { PlayerService } from '../player/player.service';
 import { WeekDto } from './dtos/week.dto';
 import { WeekService } from './week.service';
 import { DataSource } from 'typeorm';
-import { getDataSource } from 'src/datasource.wrapper';
+import { getDataSource } from '../datasource.wrapper';
 
 @ApiTags('week')
 @Controller('week')

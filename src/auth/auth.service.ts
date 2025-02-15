@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { EntityManager, } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { Player } from '../player/player.entity';
-import { PlayerService } from 'src/player/player.service';
+import { PlayerService } from '../player/player.service';
 import { isValid } from 'date-fns';
 
 @Injectable()

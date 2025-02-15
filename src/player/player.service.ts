@@ -9,27 +9,30 @@ import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
 import * as jwksClient from 'jwks-rsa';
 import { EntityManager } from 'typeorm';
+import { MovementResponseDto } from '../cash/dtos/movement.response.dto';
+import { Movement } from '../cash/movement.entity';
 import { Club } from '../club/club.entity';
 import { mapDtoToEntity } from '../decorators/automap';
 import { HandleDabaseConstraints } from '../decorators/contraint-handlers';
+import { round } from '../utils/numberUtils';
 import { AuthenticateInfoDto } from './dtos/authenticate.dto';
 import { AuthenticateGoogleDto } from './dtos/authenticate.google.dto';
 import { CreatePlayerDto } from './dtos/create-player.dto';
+import { PlayerResponseDto } from './dtos/player.response.dto';
 import { UpdatePlayerFrontDto } from './dtos/update-player-front.dto';
 import { UpdatePlayerDto } from './dtos/update-player.dto';
 import { PLAYER_ROLES } from './player.constants';
 import { Player } from './player.entity';
-import { PlayerResponseDto } from './dtos/player.response.dto';
-import { Movement } from 'src/cash/movement.entity';
-import { MovementResponseDto } from 'src/cash/dtos/movement.response.dto';
-import { round } from 'src/utils/numberUtils';
 
 @Injectable()
 export class PlayerService {
   constructor() {}
 
   @HandleDabaseConstraints()
-  async create(manager: EntityManager, createPlayerDto: CreatePlayerDto): Promise<Player> {
+  async create(
+    manager: EntityManager,
+    createPlayerDto: CreatePlayerDto,
+  ): Promise<Player> {
     const player = mapDtoToEntity(createPlayerDto, new Player());
     const clubList = await manager.find(Club);
 
@@ -86,7 +89,10 @@ export class PlayerService {
     return result;
   }
 
-  private async fromPlayerToResponse(manager: EntityManager, player: Player): Promise<PlayerResponseDto> {
+  private async fromPlayerToResponse(
+    manager: EntityManager,
+    player: Player,
+  ): Promise<PlayerResponseDto> {
     const draftMovements: Movement[] = await manager.find(Movement, {
       where: {
         validated: false,
@@ -111,11 +117,14 @@ export class PlayerService {
       phone: player.phone,
       email: player.email,
       role: player.role,
-      clubIds: player.clubs.map(club => club.id),
+      clubIds: player.clubs.map((club) => club.id),
       password: player.password,
       draftMovements: draftMovementResponse,
       balance: player.balance,
-      futureBalance: round(player.balance + draftMovements.reduce((acc, movement) => acc + movement.amount, 0)),
+      futureBalance: round(
+        player.balance +
+          draftMovements.reduce((acc, movement) => acc + movement.amount, 0),
+      ),
     };
   }
 
@@ -126,13 +135,20 @@ export class PlayerService {
     });
   }
 
-  async findOneAsResponseDto(manager: EntityManager, id: number): Promise<PlayerResponseDto> {
+  async findOneAsResponseDto(
+    manager: EntityManager,
+    id: number,
+  ): Promise<PlayerResponseDto> {
     const player = await this.findOne(manager, id);
     return await this.fromPlayerToResponse(manager, player);
   }
 
   @HandleDabaseConstraints()
-  async update(manager: EntityManager, id: number, playerDto: UpdatePlayerDto): Promise<Player> {
+  async update(
+    manager: EntityManager,
+    id: number,
+    playerDto: UpdatePlayerDto,
+  ): Promise<Player> {
     const existingPlayer = await manager.findOne(Player, {
       where: { id },
       relations: ['clubs'],
@@ -183,7 +199,7 @@ export class PlayerService {
   }
 
   async authenticate(
-    manager: EntityManager, 
+    manager: EntityManager,
     authInfo: AuthenticateInfoDto,
   ): Promise<Player | undefined> {
     const { email, phone, password } = authInfo;
@@ -196,10 +212,7 @@ export class PlayerService {
       throw new BadRequestException('Debe proporcionar una contraseña');
     }
     let player = await manager.findOne(Player, {
-      where: [
-        { email: email || ''},
-        { phone: phone || ''},
-      ],
+      where: [{ email: email || '' }, { phone: phone || '' }],
     });
     if (!player) {
       throw new UnauthorizedException({
@@ -222,7 +235,7 @@ export class PlayerService {
   }
 
   async authenticateGoogle(
-    manager: EntityManager, 
+    manager: EntityManager,
     authInfo: AuthenticateGoogleDto,
   ): Promise<Player | undefined> {
     try {
@@ -335,7 +348,10 @@ export class PlayerService {
     return await manager.save(existingPlayer);
   }
 
-  async findPlayerByEmail(manager: EntityManager, email: string): Promise<Player | undefined> {
+  async findPlayerByEmail(
+    manager: EntityManager,
+    email: string,
+  ): Promise<Player | undefined> {
     return await manager.findOne(Player, {
       where: { email },
     });

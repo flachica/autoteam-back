@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { format } from 'date-fns';
-import { PlayerService } from 'src/player/player.service';
-import { round } from 'src/utils/numberUtils';
+import { PlayerService } from '../player/player.service';
+import { round } from '../utils/numberUtils';
 import { Between, EntityManager, IsNull, Not } from 'typeorm';
 import { Court } from '../court/court.entity';
 import { Player } from '../player/player.entity';

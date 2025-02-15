@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Logger, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CombinedGuard } from '../auth/guards/combined.guard';
 import {
@@ -10,15 +18,13 @@ import {
 import { CreateReservationDto } from './dtos/create-reservation.dto';
 import { ReservationDto } from './dtos/reservation.dto';
 import { ReservationService } from './reservation.service';
-import { getDataSource } from 'src/datasource.wrapper';
+import { getDataSource } from '../datasource.wrapper';
 
 @ApiTags('reservation')
 @Controller('reservation')
 @UseGuards(CombinedGuard)
 export class ReservationController {
-  constructor(
-    private readonly reservationService: ReservationService,
-  ) {}
+  constructor(private readonly reservationService: ReservationService) {}
 
   @Post()
   @ApiCreateResponse(CreateReservationDto)
@@ -28,8 +34,11 @@ export class ReservationController {
     Logger.log(`ReservationController.create(${reservation})`);
     let result;
     await getDataSource(async (dataSource) => {
-      result = await dataSource.transaction(async (manager) => {    
-        const createResult = await this.reservationService.create(manager, reservation);
+      result = await dataSource.transaction(async (manager) => {
+        const createResult = await this.reservationService.create(
+          manager,
+          reservation,
+        );
         let result = new ReservationDto();
         result.id = createResult.id;
         result.courtId = createResult.courtId;

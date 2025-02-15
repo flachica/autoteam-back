@@ -12,15 +12,25 @@ import { Court } from './court.entity';
 import { CourtService } from './court.service';
 import { InvitedAnonPlayer } from './invited.anon.player.entity';
 import { InvitedPlayer } from './invited.player.entity';
-import { CashService } from 'src/cash/cash.service';
-import { Movement } from 'src/cash/movement.entity';
-import { CashModule } from 'src/cash/cash.module';
-import { PlayerResponseDto } from 'src/player/dtos/player.response.dto';
-import { PlayerService } from 'src/player/player.service';
+import { CashService } from '../cash/cash.service';
+import { Movement } from '../cash/movement.entity';
+import { CashModule } from '../cash/cash.module';
+import { PlayerResponseDto } from '../player/dtos/player.response.dto';
+import { PlayerService } from '../player/player.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Court, Player, InvitedAnonPlayer, InvitedPlayer, Club, HourGroup, Hour, Movement, PlayerResponseDto]),
+    TypeOrmModule.forFeature([
+      Court,
+      Player,
+      InvitedAnonPlayer,
+      InvitedPlayer,
+      Club,
+      HourGroup,
+      Hour,
+      Movement,
+      PlayerResponseDto,
+    ]),
     ClubModule,
     HourModule,
     CashModule,

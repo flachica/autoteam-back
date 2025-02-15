@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CombinedGuard } from '../auth/guards/combined.guard';
+import { getDataSource } from '../datasource.wrapper';
 import {
   ApiCreateResponse,
   ApiDeleteResponse,
@@ -21,19 +22,16 @@ import {
 import { AuthenticateInfoDto } from './dtos/authenticate.dto';
 import { AuthenticateGoogleDto } from './dtos/authenticate.google.dto';
 import { CreatePlayerDto } from './dtos/create-player.dto';
+import { PlayerResponseDto } from './dtos/player.response.dto';
 import { UpdatePlayerFrontDto } from './dtos/update-player-front.dto';
 import { UpdatePlayerDto } from './dtos/update-player.dto';
 import { Player } from './player.entity';
 import { PlayerService } from './player.service';
-import { PlayerResponseDto } from './dtos/player.response.dto';
-import { getDataSource } from 'src/datasource.wrapper';
 
 @ApiTags('player')
 @Controller('player')
 export class PlayerController {
-  constructor(
-    private readonly playerService: PlayerService,
-  ) {}
+  constructor(private readonly playerService: PlayerService) {}
 
   @Post()
   @ApiCreateResponse(CreatePlayerDto)
@@ -115,8 +113,8 @@ export class PlayerController {
     Logger.log(`PlayerController.authenticate(${authInfo.email})`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {    
-          return await this.playerService.authenticate(manager, authInfo);    
+      result = await dataSource.transaction(async (manager) => {
+        return await this.playerService.authenticate(manager, authInfo);
       });
     });
     return result;
@@ -130,9 +128,9 @@ export class PlayerController {
     Logger.log(`PlayerController.authenticateGoogle(${authInfo.token})`);
     let result;
     await getDataSource(async (dataSource) => {
-        result = await dataSource.transaction(async (manager) => {
-          return await this.playerService.authenticateGoogle(manager, authInfo);
-        });
+      result = await dataSource.transaction(async (manager) => {
+        return await this.playerService.authenticateGoogle(manager, authInfo);
+      });
     });
     return result;
   }

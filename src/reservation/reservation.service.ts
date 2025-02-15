@@ -7,15 +7,13 @@ import { CourtDto } from './dtos/court.dto';
 import { CreateReservationDto } from './dtos/create-reservation.dto';
 import { ReservationDto } from './dtos/reservation.dto';
 import { Reservation } from './reservation.entity';
-import { CashService } from 'src/cash/cash.service';
-import { FilterMovementDto } from 'src/cash/dtos/filter-movement.dto';
-import { UpdateMovementDto } from 'src/cash/dtos/update-movement.dto';
+import { CashService } from '../cash/cash.service';
+import { FilterMovementDto } from '../cash/dtos/filter-movement.dto';
+import { UpdateMovementDto } from '../cash/dtos/update-movement.dto';
 
 @Injectable()
 export class ReservationService {
-  constructor(
-    private readonly cashService: CashService,
-  ) {}
+  constructor(private readonly cashService: CashService) {}
 
   @HandleDabaseConstraints()
   async create(
@@ -38,7 +36,7 @@ export class ReservationService {
         HttpStatus.UNAUTHORIZED,
       );
     }
-    
+
     let existingCourt: Court;
     if (createReservationDto.courtId) {
       existingCourt = await manager.findOne(Court, {
@@ -65,7 +63,7 @@ export class ReservationService {
       }
       await manager.save(Court, existingCourt);
       let reservation = new Reservation();
-      reservation.court = existingCourt;        
+      reservation.court = existingCourt;
       const saveResult = await manager.save(Reservation, reservation);
 
       result = new ReservationDto();
@@ -81,20 +79,22 @@ export class ReservationService {
         let filterMovement = new FilterMovementDto();
         filterMovement.playerId = payerPlayer.id;
         filterMovement.courtId = existingCourt.id;
-        const paginatedMovements = await this.cashService.findCashMovements(manager, filterMovement);
+        const paginatedMovements = await this.cashService.findCashMovements(
+          manager,
+          filterMovement,
+        );
         for (let movement of paginatedMovements.items) {
           let updateDto = new UpdateMovementDto();
           updateDto.validated = true;
           await this.cashService.update(manager, movement.id, updateDto);
         }
       }
-      
     }
     return result;
   }
 
   async findAll(manager: EntityManager): Promise<ReservationDto[]> {
-    const reservations = await manager.find(Reservation,{
+    const reservations = await manager.find(Reservation, {
       relations: ['court'],
     });
     return reservations.map((reservation) => {
@@ -197,7 +197,10 @@ export class ReservationService {
       let filterMovement = new FilterMovementDto();
       filterMovement.playerId = payerPlayer.id;
       filterMovement.courtId = existingCourt.id;
-      const paginatedMovements = await this.cashService.findCashMovements(manager, filterMovement);
+      const paginatedMovements = await this.cashService.findCashMovements(
+        manager,
+        filterMovement,
+      );
       for (let movement of paginatedMovements.items) {
         let updateDto = new UpdateMovementDto();
         updateDto.validated = false;

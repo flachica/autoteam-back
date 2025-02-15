@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { HourGroup } from './hour/hour-group.entity';
 import { Hour } from './hour/hour.entity';
+import { Logger } from '@nestjs/common';
 
 dotenv.config();
 
@@ -25,7 +26,7 @@ async function bootstrap() {
     const clubService = app.get(ClubService);
     const playerService = app.get(PlayerService);
     const hourService = app.get(HourService);
-    
+
     // Crear clubes
     let existingClubs = await clubService.findAll(manager);
     let clubs = [];
@@ -38,7 +39,7 @@ async function bootstrap() {
 
     let existingPlayers = await playerService.findAll(manager);
     let players = [];
-    if (existingPlayers.length <= 0) {    
+    if (existingPlayers.length <= 0) {
       let phone = Math.floor(Math.random() * 1000000000).toString();
       const myPlayer = await playerService.create(manager, {
         name: `Player 1`,
@@ -48,9 +49,7 @@ async function bootstrap() {
         password: 'admin',
         role: 'admin',
       });
-      players.push(
-        myPlayer
-      );
+      players.push(myPlayer);
     } else {
       players = existingPlayers;
       console.log('Ya hay jugadores');
@@ -72,7 +71,7 @@ async function bootstrap() {
     }
     const jsonData = JSON.parse(fs.readFileSync(jsonFilePath, 'utf-8'));
     console.log(jsonData);
-    
+
     let hourGroup = await manager.findOne(HourGroup, {
       where: {
         name: jsonData.name,
@@ -83,7 +82,7 @@ async function bootstrap() {
     } else {
       console.log(`Grupo ${jsonData.name} no existe. Creando`);
       hourGroup = await hourService.createGroup(manager, {
-        name: jsonData.name
+        name: jsonData.name,
       });
     }
     let index = 0;
@@ -96,9 +95,10 @@ async function bootstrap() {
           where: {
             day_name: days[i],
             name: name,
+            groupId: hourGroup.id,
           },
-        })
-        if ( operation === 'remove') {
+        });
+        if (operation === 'remove') {
           console.log(`Hora ${name} en ${days[i]} se va a eliminar`);
           if (hour) {
             await manager.remove(Hour, hour);
@@ -112,6 +112,7 @@ async function bootstrap() {
             price: price,
             active: true,
             index: index * 10,
+            groupId: hourGroup.id,
           });
         } else {
           console.log(`Hora ${name} en ${days[i]} no existe. Creando`);
@@ -126,7 +127,7 @@ async function bootstrap() {
         }
       }
     }
-      
+
     const activateInfo: ActivateHourGroupDto = {
       id: hourGroup.id,
       active: 'true',

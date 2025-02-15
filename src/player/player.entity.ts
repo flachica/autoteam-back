@@ -11,7 +11,7 @@ import {
 import { Movement } from '../cash/movement.entity';
 import { Club } from '../club/club.entity';
 import { AutoMap } from '../decorators/automap';
-import { Court } from 'src/court/court.entity';
+import { Court } from '../court/court.entity';
 
 @Entity()
 @Index(['name', 'surname'], { unique: true })

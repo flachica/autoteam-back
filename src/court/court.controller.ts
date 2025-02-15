@@ -28,7 +28,7 @@ import { OpenWeekDtoResponse } from './dtos/open-week-response.dto';
 import { OpenWeekDto } from './dtos/open-week.dto';
 import { UpdateCourtDto } from './dtos/update-court.dto';
 import { DataSource } from 'typeorm';
-import { getDataSource } from 'src/datasource.wrapper';
+import { getDataSource } from '../datasource.wrapper';
 
 @ApiTags('court')
 @Controller('court')
@@ -59,7 +59,11 @@ export class CourtController {
     let result;
     await getDataSource(async (dataSource) => {
       result = await dataSource.transaction(async (manager) => {
-        return await this.courtService.create(manager, court, req.user.id ?? req.user.email);
+        return await this.courtService.create(
+          manager,
+          court,
+          req.user.id ?? req.user.email,
+        );
       });
     });
     return result;
@@ -75,7 +79,11 @@ export class CourtController {
     let result;
     await getDataSource(async (dataSource) => {
       result = await dataSource.transaction(async (manager) => {
-        return await this.courtService.setMeIn(manager, courtId, courtOperation);
+        return await this.courtService.setMeIn(
+          manager,
+          courtId,
+          courtOperation,
+        );
       });
     });
     return result;
@@ -91,7 +99,11 @@ export class CourtController {
     let result;
     await getDataSource(async (dataSource) => {
       result = await dataSource.transaction(async (manager) => {
-        return await this.courtService.setMeOut(manager, courtId, courtOperation);
+        return await this.courtService.setMeOut(
+          manager,
+          courtId,
+          courtOperation,
+        );
       });
     });
     return result;
@@ -166,7 +178,11 @@ export class CourtController {
     let result;
     await getDataSource(async (dataSource) => {
       result = await dataSource.transaction(async (manager) => {
-        return await this.courtService.openWeek(manager, openWeekInfo, req.user.id);
+        return await this.courtService.openWeek(
+          manager,
+          openWeekInfo,
+          req.user.id,
+        );
       });
     });
     return result;

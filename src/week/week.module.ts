@@ -12,14 +12,22 @@ import { PlayerService } from '../player/player.service';
 import { WeekDto } from '../week/dtos/week.dto';
 import { WeekController } from './week.controller';
 import { WeekService } from './week.service';
-import { InvitedPlayer } from 'src/court/invited.player.entity';
-import { CashService } from 'src/cash/cash.service';
-import { Movement } from 'src/cash/movement.entity';
-import { PlayerResponseDto } from 'src/player/dtos/player.response.dto';
+import { InvitedPlayer } from '../court/invited.player.entity';
+import { CashService } from '../cash/cash.service';
+import { Movement } from '../cash/movement.entity';
+import { PlayerResponseDto } from '../player/dtos/player.response.dto';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([WeekDto, Club, Court, Player, InvitedPlayer, Movement, PlayerResponseDto]),
+    TypeOrmModule.forFeature([
+      WeekDto,
+      Club,
+      Court,
+      Player,
+      InvitedPlayer,
+      Movement,
+      PlayerResponseDto,
+    ]),
     ClubModule,
     CourtModule,
     PlayerModule,

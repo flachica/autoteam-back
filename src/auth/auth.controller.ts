@@ -1,8 +1,18 @@
-import { Body, Controller, Get, Logger, Post, Req, Res, UseGuards, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { getDataSource } from 'src/datasource.wrapper';
+import { getDataSource } from '../datasource.wrapper';
 import { MagicLoginStrategy } from './guards/magiclogin.strategy';
 import { PasswordLessDto } from './dtos/passwordless.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,13 +26,20 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  async loginWithMagicLogin(@Req() req, @Res() res, @Body(new ValidationPipe()) body: PasswordLessDto) {
+  async loginWithMagicLogin(
+    @Req() req,
+    @Res() res,
+    @Body(new ValidationPipe()) body: PasswordLessDto,
+  ) {
     Logger.log(`AuthController.loginWithMagicLogin(${body.destination})`);
     try {
       let loginResult;
       await getDataSource(async (dataSource) => {
         await dataSource.transaction(async (manager) => {
-          return await this.authService.passportLogin(manager, req.body.destination);
+          return await this.authService.passportLogin(
+            manager,
+            req.body.destination,
+          );
         });
         loginResult = await this.strategy.send(req, res);
       });
@@ -36,7 +53,7 @@ export class AuthController {
   @Get('login/callback')
   async callback(@Req() req) {
     return {
-      "access_token": req.user,
+      access_token: req.user,
     };
   }
 
@@ -46,9 +63,9 @@ export class AuthController {
     try {
       let token;
       await getDataSource(async (dataSource) => {
-          token = await dataSource.transaction(async (manager) => {
-            return await this.authService.oAuthLogin(manager, req.user);
-          });
+        token = await dataSource.transaction(async (manager) => {
+          return await this.authService.oAuthLogin(manager, req.user);
+        });
       });
       res.redirect(`${process.env.FRONTEND_URL}/oauth?token=${token.jwt}`);
     } catch (err) {

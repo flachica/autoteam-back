@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import Strategy from 'passport-magic-login';
-import { AuthService } from '../auth.service';
+import { Strategy } from 'passport-magic-link';
 import { getDataSource } from '../../datasource.wrapper';
+import { AuthService } from '../auth.service';
 // import { MailgunService } from '../mailgun/mailgun.service';
 
 @Injectable()
@@ -13,33 +13,34 @@ export class MagicLoginStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     super({
       secret: process.env.AUTH_SECRET,
-      userFields: ['email'],
+      userFields: ['destination'],
       tokenField: 'token',
-      jwtOptions: {
-        expiresIn: process.env.MAGIC_LINK_EXPIRES_IN,
-      },
       callbackUrl: process.env.FRONTEND_URL + process.env.PASSPORT_CALLBACK_URL,
-      sendMagicLink: async (destination, href) => {
-        try {
+    }, async (user, token) => {
+      await this.sendToken(user, token);
+    }, async (payload, callback) => {
+      try {
+        const user = await this.verifyUser(payload);
+        callback(null, user);
+      } catch (err) {
+        callback(err);
+      }
+    });
+  }
+
+  async sendToken(user: any, token: string) {
+      const destination = user.destination;
+      const href = `${process.env.FRONTEND_URL}${process.env.PASSPORT_CALLBACK_URL}?token=${token}`;
+      try {
           Logger.debug(`sending email to ${destination} with Link ${href}`);
-          // await this.mailgunService.sendMail({
-          //     from: 'Padeleros.app <no-reply@padeleros.app>',
-          //     to: destination,
-          //     subject: 'Entra a Padeleros.app ahora',
-          //     text: `Entra a Padeleros.app siguiendo este enlace ${href}`,
-          //     html: `<p>Entra a Padeleros.app siguiendo este enlace <a href="${href}">Entra</a></p>`,
-          // });
-        } catch (error) {
+          // await this.mailgunService.sendMail({ ... });
+      } catch (error) {
           Logger.error(
             `Error sending email to ${destination} with Link ${href}. Error: ${JSON.stringify(error)}`,
           );
-        }
-      },
-      verify: async (payload, callback) => {
-        callback(null, this.verifyUser(payload));
-      },
-    });
+      }
   }
+
 
   async verifyUser(payload: { destination: string }) {
     Logger.log(`MagicLoginStrategy.verifyUser(${payload.destination})`);

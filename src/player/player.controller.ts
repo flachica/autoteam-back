@@ -1,23 +1,27 @@
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Logger,
-  Param,
-  Post,
-  Put,
-  UseGuards,
+    Body,
+    Controller,
+    Delete,
+    Get,
+    Logger,
+    Param,
+    Post,
+    Put,
+    Req,
+    Res,
+    UnauthorizedException,
+    UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { CombinedGuard } from '../auth/guards/combined.guard';
 import { getDataSource } from '../datasource.wrapper';
 import {
-  ApiCreateResponse,
-  ApiDeleteResponse,
-  ApiFindAllResponse,
-  ApiFindOneResponse,
-  ApiUpdateResponse,
+    ApiCreateResponse,
+    ApiDeleteResponse,
+    ApiFindAllResponse,
+    ApiFindOneResponse,
+    ApiUpdateResponse,
 } from '../decorators/swagger-decorators';
 import { AuthenticateInfoDto } from './dtos/authenticate.dto';
 import { AuthenticateGoogleDto } from './dtos/authenticate.google.dto';
@@ -58,6 +62,43 @@ export class PlayerController {
       });
     });
     return result;
+  }
+
+  @Get('export/balances')
+  @UseGuards(CombinedGuard)
+  async exportBalances(@Res() res: Response, @Req() req: any): Promise<void> {
+    Logger.log(`PlayerController.exportBalances()`);
+
+    if (req.user?.role !== 'admin') {
+      throw new UnauthorizedException(
+        'Solo los administradores pueden exportar saldos',
+      );
+    }
+
+    let players: PlayerResponseDto[];
+    await getDataSource(async (dataSource) => {
+      await dataSource.transaction(async (manager) => {
+        players = await this.playerService.findAll(manager);
+      });
+    });
+
+    const csvRows = [
+      ['Nombre', 'Teléfono', 'Saldo'],
+      ...players.map((p) => [
+        `${p.name} ${p.surname || ''}`.trim(),
+        p.phone,
+        p.balance.toString(),
+      ]),
+    ];
+
+    const csvContent = csvRows.map((e) => e.join(',')).join('\n');
+
+    res.set({
+      'Content-Type': 'text/csv',
+      'Content-Disposition': 'attachment; filename="saldos.csv"',
+    });
+
+    res.send(csvContent);
   }
 
   @Get(':id')

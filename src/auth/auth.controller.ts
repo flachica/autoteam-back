@@ -1,30 +1,29 @@
 import {
-  Body,
-  Controller,
-  Get,
-  Logger,
-  Post,
-  Req,
-  Res,
-  UseGuards,
-  ValidationPipe,
+    Body,
+    Controller,
+    Get,
+    Logger,
+    Post,
+    Req,
+    Res,
+    UseGuards,
+    ValidationPipe,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
-import { AuthService } from './auth.service';
 import { getDataSource } from '../datasource.wrapper';
-import { MagicLoginStrategy } from './guards/magiclogin.strategy';
+import { AuthService } from './auth.service';
 import { PasswordLessDto } from './dtos/passwordless.dto';
-import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private strategy: MagicLoginStrategy,
   ) {}
 
+  @UseGuards(AuthGuard('magiclogin'))
   @Post('login')
   async loginWithMagicLogin(
     @Req() req,
@@ -32,21 +31,9 @@ export class AuthController {
     @Body(new ValidationPipe()) body: PasswordLessDto,
   ) {
     Logger.log(`AuthController.loginWithMagicLogin(${body.destination})`);
-    try {
-      let loginResult;
-      await getDataSource(async (dataSource) => {
-        await dataSource.transaction(async (manager) => {
-          return await this.authService.passportLogin(
-            manager,
-            req.body.destination,
-          );
-        });
-        loginResult = await this.strategy.send(req, res);
-      });
-      return loginResult;
-    } catch (err) {
-      res.status(err.status).send({ success: false, message: err.message });
-    }
+    // The guard handles the token sending.
+    // We just return success.
+    res.send({ success: true });
   }
 
   @UseGuards(AuthGuard('magiclogin'))

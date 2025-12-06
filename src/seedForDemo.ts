@@ -1,15 +1,18 @@
 import { NestFactory } from '@nestjs/core';
+import * as dotenv from 'dotenv';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
 import { ClubService } from './club/club.service';
 import { CourtService } from './court/court.service';
 import { ActivateHourGroupDto } from './hour/dtos/activate-group.dto';
 import { HourService } from './hour/hour.service';
 import { PlayerService } from './player/player.service';
-import { saltAndHashPassword } from './utils/passwordUtils';
+dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
-  this.dataSource.transaction(async (manager) => {
+  const dataSource = app.get(DataSource);
+  await dataSource.transaction(async (manager) => {
 
     const courtService = app.get(CourtService);
     const clubService = app.get(ClubService);
@@ -34,56 +37,22 @@ async function bootstrap() {
     if (existingPlayers.length <= 0) {
       for (let i = 1; i < 6; i++) {
         let phone = Math.floor(Math.random() * 1000000000).toString();
-        const password = await saltAndHashPassword('admin');
-        players.push(
-          await playerService.create(manager, {
+        const password = 'admin';
+        const player = await playerService.create(manager, {
             name: `Player ${i}`,
             clubs: [clubs[0].id],
             phone: phone,
             password: password,
-          }),
-        );
+          });
+        player.balance = 100;
+        players.push(await manager.save(player));
       }
     } else {
       players = existingPlayers;
       console.log('Players ya existen');
     }
 
-    let existingCourts = await courtService.findAll(manager);
-    if (existingCourts.length <= 0) {
-      let today = new Date();
-      let dayOfWeek = today.getDay();
-      let monday = new Date(today);
-      monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
-
-      for (let i = 1; i < 5; i++) {
-        // elegir 4 al azar de players
-        let courtPlayers = [];
-        let max = Math.floor(Math.random() * 5);
-        for (let j = 0; j < max; j++) {
-          courtPlayers.push(players[j]);
-        }
-        let day = new Date(monday);
-        day.setDate(day.getDate() + i);
-        await courtService.create(manager,
-          {
-            name: `Court ${i}`,
-            club: clubs[0].id,
-            date: day.toLocaleDateString('es-ES'),
-            hour: '20:30',
-            minPlayers: 4,
-            maxPlayers: 4,
-            state: 'opened',
-            price: 5.6,
-            players: courtPlayers.map((player) => player.id),
-          },
-          myPlayerId.toString(),
-        );
-      }
-    } else {
-      console.log('Courts ya existen');
-    }
-
+    // MOVED HOURS CREATION BEFORE COURTS
     let existingGroups = await hourService.groupedHours(manager, false);
     if (existingGroups.length <= 0) {
       let days = [
@@ -148,6 +117,42 @@ async function bootstrap() {
     } else {
       console.log('Hours ya existen');
     }
+
+    let existingCourts = await courtService.findAll(manager);
+    if (existingCourts.length <= 0) {
+      let today = new Date();
+      let dayOfWeek = today.getDay();
+      let monday = new Date(today);
+      monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7) + 7); // Next week Monday
+
+      for (let i = 1; i < 5; i++) {
+        // elegir 4 al azar de players
+        let courtPlayers = [];
+        let max = Math.floor(Math.random() * 5);
+        for (let j = 0; j < max; j++) {
+          courtPlayers.push(players[j]);
+        }
+        let day = new Date(monday);
+        day.setDate(day.getDate() + i);
+        await courtService.create(manager,
+          {
+            name: `Court ${i}`,
+            club: clubs[0].id,
+            date: day.toLocaleDateString('es-ES'),
+            hour: '20:30',
+            minPlayers: 4,
+            maxPlayers: 4,
+            state: 'opened',
+            price: 5.6,
+            players: courtPlayers.map((player) => player.id),
+          },
+          myPlayerId.toString(),
+        );
+      }
+    } else {
+      console.log('Courts ya existen');
+    }
+
   });
   await app.close();
 }

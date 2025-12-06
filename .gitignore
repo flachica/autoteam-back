@@ -71,6 +71,6 @@ ormconfig.js
 ormconfig.ts
 
 database.sqlite
-package-lock.json
+
 tsconfig.build.json
 json

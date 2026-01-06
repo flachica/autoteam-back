@@ -38,12 +38,6 @@ export class CourtService {
   ): Promise<Court> {
     let today = new Date();
     today.setHours(0, 0, 0, 0);
-    if (parseDate(createCourtDto.date) < today) {
-      throw new HttpException(
-        `Fecha ${parseDate(createCourtDto.date).toLocaleDateString('es-ES')} expirada`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
     let myPlayer: Player;
     if (!myPlayerIdOrEmail) {
       throw new HttpException('Jugador obligatorio', HttpStatus.BAD_REQUEST);
